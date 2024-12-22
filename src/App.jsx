@@ -4,32 +4,33 @@ import "./App.css";
 export default function App() {
   return (
     <>
+      <DataManager />
+    </>
+  );
+}
+
+function DataManager() {
+  return (
+    <>
       <InputProcessor />
       <WordMeaningFetcher />
+      <InputArea />
+      <DisplayArea />
+      <MeaningArea />
     </>
   );
 }
 
 function InputProcessor() {
-  return (
-    <>
-      <InputArea />
-      <DisplayArea />
-    </>
-  );
+  return <></>;
 }
 
 function InputArea() {
-  return <div>InputArea</div>;
+  return <div>InputAre</div>;
 }
 
 function WordMeaningFetcher() {
-  return (
-    <>
-      <DisplayArea />
-      <MeaningArea />
-    </>
-  );
+  return <></>;
 }
 
 function DisplayArea() {
