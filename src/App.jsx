@@ -18,9 +18,6 @@ function DataManager() {
     setSplitText(text.match(/(\w+|[^\s\w])/g) || []); // 正規表現で分割
   };
 
-  const [lemma, setLemma] = useState(null);
-  const [meaning, setMeaning] = useState(null);
-  const [synonyms, setSynonyms] = useState(null);
   const [fetchedWordData, setFetchedWordData] = useState({});
 
   const lemmatizeWord = (word) => {
@@ -29,9 +26,9 @@ function DataManager() {
       nlp(word).verbs().toInfinitive().out() ||
       nlp(word).nouns().toSingular().out() ||
       word; // 該当がなければそのまま
-    setLemma(lemmatizedWord);
     return lemmatizedWord; // 結果を返す
   };
+
   const fetchMeaning = async (word) => {
     try {
       const response = await fetch(
@@ -39,40 +36,45 @@ function DataManager() {
       );
       const data = await response.json();
       console.log("Meaning of word: ", data);
-      setMeaning(data);
+      return data;
     } catch (error) {
       console.error("Error fetching meaning: ", error);
-      setMeaning(null);
+      return null;
     }
   };
-
   const fetchSynonyms = async (word) => {
     try {
       const response = await fetch(`https://api.datamuse.com/words?ml=${word}`);
       const data = await response.json();
       console.log("Synonyms of word: ", data);
-      setSynonyms(data);
+      return data;
     } catch (error) {
       console.error("Error fetching synonyms: ", error);
-      setSynonyms(null);
+      return null;
     }
   };
 
   const handleWordClick = async (word) => {
-    console.log("Clicked word: ", word);
-    const lemmatizedWord = lemmatizeWord(word); // 原型化
-    await fetchMeaning(lemmatizedWord); // 意味を取得
-    await fetchSynonyms(lemmatizedWord); // 類義語を取得
+    try {
+      console.log("Clicked word: ", word);
+      const lemmatizedWord = lemmatizeWord(word);
 
-    // データを統合してセット
-    setFetchedWordData({
-      word,
-      lemma: lemmatizedWord,
-      meaning,
-      synonyms,
-    });
+      // 並行して複数のAPIリクエストを実行
+      const [meaningResponse, synonymsResponse] = await Promise.all([
+        fetchMeaning(lemmatizedWord),
+        fetchSynonyms(lemmatizedWord),
+      ]);
+
+      setFetchedWordData({
+        baseWord: word,
+        lemma: lemmatizedWord,
+        meaning: meaningResponse,
+        synonyms: synonymsResponse,
+      });
+    } catch (error) {
+      console.error("Error processing word:", error);
+    }
   };
-
   return (
     <>
       <InputArea onSendText={handleTextInterpret} />
@@ -145,10 +147,10 @@ function DisplayArea({ splitText, onWordClick }) {
 function MeaningArea({ wordData }) {
   return (
     <div className="bg-black text-white p-4 m-2">
-      {wordData.word ? (
+      {wordData ? (
         <>
           <p>
-            <strong>Word:</strong> {wordData.word}
+            <strong>Word:</strong> {wordData.baseWord}
           </p>
           <p>
             <strong>Lemma:</strong> {wordData.lemma}
@@ -160,9 +162,12 @@ function MeaningArea({ wordData }) {
               : "No definition found"}
           </p>
           <p>
-            <strong>Synonyms:</strong>{" "}
+            <strong>Synonyms:</strong> {""}
             {wordData.synonyms
-              ? wordData.synonyms.map((synonym) => synonym.word).join(", ")
+              ? wordData.synonyms
+                  .slice(0, 5)
+                  .map((synonym) => synonym.word)
+                  .join(", ")
               : "No synonyms found"}
           </p>
         </>
