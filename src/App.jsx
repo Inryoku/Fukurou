@@ -12,7 +12,6 @@ export default function App() {
 
 function DataManager() {
   const [splitText, setSplitText] = useState([]); // 初期値を空配列に変更
-
   const handleTextInterpret = (text) => {
     console.log("Interpreting text: ", text);
     setSplitText(text.match(/(\w+|[^\s\w])/g) || []); // 正規表現で分割
@@ -117,6 +116,8 @@ function InputArea({ onSendText }) {
 }
 
 function DisplayArea({ splitText, onWordClick }) {
+  const [isClicked, setIsClicked] = useState(false);
+
   const isAlphabet = (word) => {
     return /^[a-zA-Z]+$/.test(word);
   };
@@ -133,7 +134,7 @@ function DisplayArea({ splitText, onWordClick }) {
             key={index}
             onClick={() => clickable && onWordClick(word)}
             className={`m-1 p-1
-               ${clickable ? "bg-gray-500" : null}
+               ${clickable ? "bg-gray-300" : null}
                 `}
           >
             {word}
