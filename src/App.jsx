@@ -115,32 +115,103 @@ function InputArea({ onSendText }) {
   );
 }
 
-function DisplayArea({ splitText, onWordClick }) {
-  const [isClicked, setIsClicked] = useState(false);
+// 除外する単語リスト
+const EXCLUDED_WORDS = [
+  // 冠詞
+  "the",
+  "a",
+  "an",
+  // 前置詞
+  "in",
+  "on",
+  "at",
+  "by",
+  "for",
+  "with",
+  "of",
+  // 接続詞
+  "and",
+  "or",
+  "but",
+  // 動詞 (be動詞, have, do)
+  "be",
+  "am",
+  "are",
+  "is",
+  "was",
+  "were",
+  "been",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  // 代名詞
+  "he",
+  "she",
+  "it",
+  "they",
+  "we",
+  "I",
+  "you",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+];
 
-  const isAlphabet = (word) => {
-    return /^[a-zA-Z]+$/.test(word);
+function DisplayArea({ splitText, onWordClick }) {
+  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState(null); // 選択された文のインデックス
+  const [selectedWordData, setSelectedWordData] = useState(null); // 選択された単語データ
+
+  const isClickableWord = (word) => {
+    const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
+    const isExcluded = EXCLUDED_WORDS.includes(word.toLowerCase()); // 除外単語リストに含まれるか
+    return isAlphabet && !isExcluded;
+  };
+
+  /**
+   * 文を分割し、ピリオドを保持した形で配列として返す
+   */
+  const sentences = splitText?.length
+    ? splitText
+        .join(" ") // 配列を1つの文字列に結合
+        .match(/[^.]+[.]|\S+/g) // 文末のピリオドを保持
+        .map((sentence) => sentence.trim()) // 各文の前後の余白を削除
+    : []; // splitText が空の場合は空配列を返す
+
+  const handleWordClick = async (word, sentenceIndex) => {
+    const wordData = await onWordClick(word); // 単語データを取得
+    setSelectedSentenceIndex(sentenceIndex); // 対象の文を選択
+    setSelectedWordData(wordData); // 単語データをセット
   };
 
   return (
-    <div
-      className="flex flex-wrap bg-slate-50 
-      text-sm text-black"
-    >
-      {splitText.map((word, index) => {
-        const clickable = isAlphabet(word);
-        return (
-          <span
-            key={index}
-            onClick={() => clickable && onWordClick(word)}
-            className={`m-1 p-1
-               ${clickable ? "bg-gray-300" : null}
-                `}
-          >
-            {word}
-          </span>
-        );
-      })}
+    <div className="flex flex-wrap bg-slate-50 text-sm text-black">
+      {/* 各文をレンダリング */}
+      {sentences.map((sentence, sentenceIndex) => (
+        <p key={sentenceIndex} className="flex flex-wrap">
+          {/* 文を単語ごとに分割してレンダリング */}
+          {sentence.split(" ").map((word, wordIndex) => {
+            const isClickable = isClickableWord(word);
+            return (
+              <span
+                key={wordIndex}
+                className={`m-1 ${
+                  isClickable ? "bg-gray-200 cursor-pointer" : ""
+                }`}
+                onClick={() =>
+                  isClickable && handleWordClick(word, sentenceIndex)
+                }
+              >
+                {word}
+              </span>
+            );
+          })}
+        </p>
+      ))}
     </div>
   );
 }
