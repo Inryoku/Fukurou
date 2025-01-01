@@ -77,7 +77,11 @@ function DataManager() {
   return (
     <>
       <InputArea onSendText={handleTextInterpret} />
-      <DisplayArea splitText={splitText} onWordClick={handleWordClick} />
+      <DisplayArea
+        splitText={splitText}
+        wordData={fetchedWordData}
+        onWordClick={handleWordClick}
+      />
       <MeaningArea wordData={fetchedWordData} />
     </>
   );
@@ -162,7 +166,7 @@ const EXCLUDED_WORDS = [
   "them",
 ];
 
-function DisplayArea({ splitText, onWordClick }) {
+function DisplayArea({ splitText, onWordClick, wordData }) {
   const [selectedSentenceIndex, setSelectedSentenceIndex] = useState(null); // 選択された文のインデックス
   const [selectedWordData, setSelectedWordData] = useState(null); // 選択された単語データ
 
@@ -178,9 +182,10 @@ function DisplayArea({ splitText, onWordClick }) {
   const sentences = splitText?.length
     ? splitText
         .join(" ") // 配列を1つの文字列に結合
-        .match(/[^.]+[.]|\S+/g) // 文末のピリオドを保持
+        .replace(/([^.!?])$/, "$1.") // 最後の文にピリオドを追加
+        .match(/[^.!?]+[.!?]|\S+/g) // 文末のピリオド・クエスチョンマーク・感嘆符を保持
         .map((sentence) => sentence.trim()) // 各文の前後の余白を削除
-    : []; // splitText が空の場合は空配列を返す
+    : [];
 
   const handleWordClick = async (word, sentenceIndex) => {
     const wordData = await onWordClick(word); // 単語データを取得
@@ -210,6 +215,11 @@ function DisplayArea({ splitText, onWordClick }) {
               </span>
             );
           })}
+          {/* 選択された文の場合、意味エリアを表示 */}
+          {selectedSentenceIndex !== null &&
+          selectedSentenceIndex === sentenceIndex ? (
+            <MeaningArea wordData={wordData} />
+          ) : null}
         </p>
       ))}
     </div>
