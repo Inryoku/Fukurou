@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import nlp from "compromise";
+import React from "react";
 
 export default function App() {
   return (
@@ -11,15 +12,25 @@ export default function App() {
 }
 
 function DataManager() {
-  const [splitText, setSplitText] = useState([]); // 初期値を空配列に変更
-  const handleTextInterpret = (text) => {
-    console.log("Interpreting text: ", text);
-    setSplitText(text.match(/(\w+|[^\s\w])/g) || []); // 正規表現で分割
+  const [parsedSentences, setParsedSentences] = useState<string[]>([]); // 初期値を空配列に変更
+  const handleTextInterpret = (text: string | null) => {
+    const sentences =
+      text // テキストを受け取り
+        ?.replace(/([^.!?])$/, "$1.") // 最後の文にピリオドを追加
+        .match(/[^.!?]+[.!?]|\S+/g) // 文末のピリオド・クエスチョンマーク・感嘆符を保持
+        ?.map((sentence) => sentence.trim()) || []; // 各文の前後の余白を削除
+
+    setParsedSentences(sentences); // 正規表現で分割された文をセット
   };
 
-  const [fetchedWordData, setFetchedWordData] = useState({});
+  const [fetchedWordData, setFetchedWordData] = useState({
+    baseWord: "",
+    lemma: "",
+    meaning: null,
+    synonyms: null,
+  });
 
-  const lemmatizeWord = (word) => {
+  const lemmatizeWord = (word: string) => {
     // 原型化処理
     const lemmatizedWord =
       nlp(word).verbs().toInfinitive().out() ||
@@ -28,7 +39,7 @@ function DataManager() {
     return lemmatizedWord; // 結果を返す
   };
 
-  const fetchMeaning = async (word) => {
+  const fetchMeaning = async (word: any) => {
     try {
       const response = await fetch(
         `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
@@ -41,7 +52,7 @@ function DataManager() {
       return null;
     }
   };
-  const fetchSynonyms = async (word) => {
+  const fetchSynonyms = async (word: any) => {
     try {
       const response = await fetch(`https://api.datamuse.com/words?ml=${word}`);
       const data = await response.json();
@@ -53,7 +64,7 @@ function DataManager() {
     }
   };
 
-  const handleWordClick = async (word) => {
+  const handleWordClick = async (word: any) => {
     try {
       console.log("Clicked word: ", word);
       const lemmatizedWord = lemmatizeWord(word);
@@ -78,19 +89,22 @@ function DataManager() {
     <>
       <InputArea onSendText={handleTextInterpret} />
       <DisplayArea
-        splitText={splitText}
+        displaySentences={parsedSentences}
         wordData={fetchedWordData}
         onWordClick={handleWordClick}
       />
-      <MeaningArea wordData={fetchedWordData} />
     </>
   );
 }
 
-function InputArea({ onSendText }) {
+interface InputAreaProps {
+  onSendText: (text: string) => void;
+}
+
+function InputArea({ onSendText }: InputAreaProps) {
   const [inputText, setInputText] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     if (inputText.trim() !== "") {
       onSendText(inputText);
@@ -102,8 +116,7 @@ function InputArea({ onSendText }) {
     <form onSubmit={handleSubmit} className="flex flex-col">
       <textarea
         className="text-black p-2 m-1"
-        type="text"
-        rows="8"
+        rows={8}
         placeholder="Type or Paste here"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
@@ -125,6 +138,7 @@ const EXCLUDED_WORDS = [
   "the",
   "a",
   "an",
+  "s",
   // 前置詞
   "in",
   "on",
@@ -133,6 +147,26 @@ const EXCLUDED_WORDS = [
   "for",
   "with",
   "of",
+  "to",
+  "from",
+  "about",
+  "as",
+  "into",
+  "like",
+  "through",
+  "after",
+  "over",
+  "between",
+  "under",
+  "against",
+  "during",
+  "before",
+  "around",
+  "without",
+  "within",
+  "behind",
+  "beyond",
+
   // 接続詞
   "and",
   "or",
@@ -159,6 +193,11 @@ const EXCLUDED_WORDS = [
   "we",
   "I",
   "you",
+  "this",
+  "that",
+  "these",
+  "there",
+  "those",
   "me",
   "him",
   "her",
@@ -166,28 +205,34 @@ const EXCLUDED_WORDS = [
   "them",
 ];
 
-function DisplayArea({ splitText, onWordClick, wordData }) {
-  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState(null); // 選択された文のインデックス
-  const [selectedWordData, setSelectedWordData] = useState(null); // 選択された単語データ
+interface DisplayAreaProps {
+  displaySentences: string[];
+  onWordClick: (word: string) => Promise<void>;
+  wordData: {
+    baseWord: string;
+    lemma: string;
+    meaning: any;
+    synonyms: any;
+  };
+}
 
-  const isClickableWord = (word) => {
+function DisplayArea({
+  displaySentences,
+  onWordClick,
+  wordData,
+}: DisplayAreaProps) {
+  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState<
+    number | null
+  >(null); // 選択された文のインデックス
+  const [selectedWordData, setSelectedWordData] = useState<any>(null); // 選択された単語データ
+
+  const isClickableWord = (word: string) => {
     const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
     const isExcluded = EXCLUDED_WORDS.includes(word.toLowerCase()); // 除外単語リストに含まれるか
     return isAlphabet && !isExcluded;
   };
 
-  /**
-   * 文を分割し、ピリオドを保持した形で配列として返す
-   */
-  const sentences = splitText?.length
-    ? splitText
-        .join(" ") // 配列を1つの文字列に結合
-        .replace(/([^.!?])$/, "$1.") // 最後の文にピリオドを追加
-        .match(/[^.!?]+[.!?]|\S+/g) // 文末のピリオド・クエスチョンマーク・感嘆符を保持
-        .map((sentence) => sentence.trim()) // 各文の前後の余白を削除
-    : [];
-
-  const handleWordClick = async (word, sentenceIndex) => {
+  const handleWordClick = async (word: string, sentenceIndex: number) => {
     const wordData = await onWordClick(word); // 単語データを取得
     setSelectedSentenceIndex(sentenceIndex); // 対象の文を選択
     setSelectedWordData(wordData); // 単語データをセット
@@ -195,11 +240,9 @@ function DisplayArea({ splitText, onWordClick, wordData }) {
 
   return (
     <div className="flex flex-wrap bg-slate-50 text-sm text-black">
-      {/* 各文をレンダリング */}
-      {sentences.map((sentence, sentenceIndex) => (
+      {displaySentences.map((sentence: string, sentenceIndex: number) => (
         <p key={sentenceIndex} className="flex flex-wrap">
-          {/* 文を単語ごとに分割してレンダリング */}
-          {sentence.split(" ").map((word, wordIndex) => {
+          {sentence.match(/\w+|[^\s\w]+/g)?.map((word, wordIndex) => {
             const isClickable = isClickableWord(word);
             return (
               <span
@@ -215,7 +258,6 @@ function DisplayArea({ splitText, onWordClick, wordData }) {
               </span>
             );
           })}
-          {/* 選択された文の場合、意味エリアを表示 */}
           {selectedSentenceIndex !== null &&
           selectedSentenceIndex === sentenceIndex ? (
             <MeaningArea wordData={wordData} />
@@ -226,7 +268,14 @@ function DisplayArea({ splitText, onWordClick, wordData }) {
   );
 }
 
-function MeaningArea({ wordData }) {
+interface WordData {
+  baseWord: string;
+  lemma: string;
+  meaning: any;
+  synonyms: any;
+}
+
+function MeaningArea({ wordData }: { wordData: WordData }) {
   return (
     <div className="bg-black text-white p-4 m-2">
       {wordData ? (
@@ -248,7 +297,7 @@ function MeaningArea({ wordData }) {
             {wordData.synonyms
               ? wordData.synonyms
                   .slice(0, 5)
-                  .map((synonym) => synonym.word)
+                  .map((synonym: { word: any }) => synonym.word)
                   .join(", ")
               : "No synonyms found"}
           </p>
