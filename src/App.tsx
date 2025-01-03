@@ -12,18 +12,7 @@ export default function App() {
   );
 }
 
-function DataManager() {
-  const [parsedSentences, setParsedSentences] = useState<string[]>([]); // 初期値を空配列に変更
-  const handleTextInterpret = (text: string | null) => {
-    const sentences =
-      text // テキストを受け取り
-        ?.replace(/([^.!?])$/, "$1.") // 最後の文にピリオドを追加
-        .match(/[^.!?]+[.!?]|\S+/g) // 文末のピリオド・クエスチョンマーク・感嘆符を保持
-        ?.map((sentence) => sentence.trim()) || []; // 各文の前後の余白を削除
-
-    setParsedSentences(sentences); // 正規表現で分割された文をセット
-  };
-
+function DataFetchLogic() {
   const [fetchedWordData, setFetchedWordData] = useState({
     baseWord: "",
     lemma: "",
@@ -65,7 +54,7 @@ function DataManager() {
     }
   };
 
-  const handleWordClick = async (word: any) => {
+  const getWordMeaningAndSynonym = async (word: any) => {
     try {
       console.log("Clicked word: ", word);
       const lemmatizedWord = lemmatizeWord(word);
@@ -86,13 +75,43 @@ function DataManager() {
       console.error("Error processing word:", error);
     }
   };
+  return {
+    getWordMeaningAndSynonym,
+    fetchedWordData,
+  };
+}
+
+function InputProcessLogic() {
+  const [parsedSentences, setParsedSentences] = useState<string[]>([]); // 初期値を空配列に変更
+  const textInterpret = (text: string | null) => {
+    const sentences =
+      text // テキストを受け取り
+        ?.replace(/([^.!?])$/, "$1.") // 最後の文にピリオドを追加
+        .match(/[^.!?]+[.!?]|\S+/g) // 文末のピリオド・クエスチョンマーク・感嘆符を保持
+        ?.map((sentence) => sentence.trim()) || []; // 各文の前後の余白を削除
+
+    setParsedSentences(sentences); // 正規表現で分割された文をセット
+  };
+
+  return {
+    textInterpret,
+    parsedSentences,
+  };
+}
+
+function DataManager() {
+  const { textInterpret, parsedSentences } = InputProcessLogic();
+
+  const { getWordMeaningAndSynonym, fetchedWordData } = DataFetchLogic();
+
+
   return (
     <>
-      <InputArea onSendText={handleTextInterpret} />
+      <InputArea onSendText={textInterpret} />
       <DisplayArea
         displaySentences={parsedSentences}
         wordData={fetchedWordData}
-        onWordClick={handleWordClick}
+        onWordClick={getWordMeaningAndSynonym}
       />
     </>
   );
