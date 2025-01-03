@@ -104,7 +104,6 @@ function DataManager() {
 
   const { getWordMeaningAndSynonym, fetchedWordData } = DataFetchLogic();
 
-
   return (
     <>
       <InputArea onSendText={textInterpret} />
@@ -246,11 +245,11 @@ function DisplayArea({
 }: DisplayAreaProps) {
   const [selectedWordInfo, setSelectedWordInfo] = useState<{
     sentenceIndex: number | null;
-    wordData: any | null;
+    isLoading: boolean;
   }>({
     sentenceIndex: null,
-    wordData: null,
-  }); // 選択された単語情報
+    isLoading: false, // 各文ごとのローディング状態を管理
+  });
 
   const isClickableWord = (word: string) => {
     const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
@@ -259,8 +258,21 @@ function DisplayArea({
   };
 
   const handleWordClick = async (word: string, sentenceIndex: number) => {
+    // 現在の文のローディング状態をセット
+    setSelectedWordInfo((prev) => ({
+      ...prev,
+      sentenceIndex,
+      isLoading: true, // ローディング開始
+    }));
+
     const wordData = await onWordClick(word); // 単語データを取得
-    setSelectedWordInfo({ sentenceIndex, wordData }); // 選択された単語情報をセット
+
+    // ローディング終了し、データをセット
+    setSelectedWordInfo({
+      sentenceIndex,
+      wordData,
+      isLoading: false,
+    });
   };
 
   const splitIntoWords = (sentence: string): string[] => {
@@ -270,32 +282,109 @@ function DisplayArea({
   return (
     <div className="flex flex-wrap bg-slate-50 text-sm text-black">
       {displaySentences.map((sentence: string, sentenceIndex: number) => (
-        <p key={sentenceIndex} className="flex flex-wrap">
-          {splitIntoWords(sentence).map((word: string, wordIndex: number) => {
-            const isClickable = isClickableWord(word);
-            return (
-              <span
-                key={wordIndex}
-                className={clsx("m-1", {
-                  "bg-gray-200 cursor-pointer": isClickable,
-                })}
-                onClick={() =>
-                  isClickable && handleWordClick(word, sentenceIndex)
-                }
-              >
-                {word}
-              </span>
-            );
-          })}
-          {selectedWordInfo.sentenceIndex !== null &&
-          selectedWordInfo.sentenceIndex === sentenceIndex ? (
-            <MeaningArea wordData={wordData} />
+        <div key={sentenceIndex} className="flex flex-col m-1">
+          {/* 文の表示 */}
+          <p key={sentenceIndex} className="flex flex-wrap">
+            {splitIntoWords(sentence).map((word: string, wordIndex: number) => {
+              const isClickable = isClickableWord(word);
+              return (
+                <span
+                  key={wordIndex}
+                  className={clsx("m-1", {
+                    "bg-gray-200 cursor-pointer": isClickable,
+                  })}
+                  onClick={() =>
+                    isClickable && handleWordClick(word, sentenceIndex)
+                  }
+                >
+                  {word}
+                </span>
+              );
+            })}
+          </p>
+
+          {/* MeaningArea の表示 */}
+          {selectedWordInfo.sentenceIndex === sentenceIndex ? (
+            <MeaningArea
+              wordData={wordData}
+              isLoading={selectedWordInfo.isLoading}
+            />
           ) : null}
-        </p>
+        </div>
       ))}
     </div>
   );
 }
+
+// function DisplayArea({
+//   displaySentences,
+//   onWordClick,
+//   wordData,
+//   excludeWords = EXCLUDED_WORDS,
+// }: DisplayAreaProps) {
+//   const [selectedWordInfo, setSelectedWordInfo] = useState<{
+//     sentenceIndex: number | null;
+//     wordData: any | null;
+//   }>({
+//     sentenceIndex: null,
+//     wordData: null,
+//   }); // 選択された単語情報
+
+//   const isClickableWord = (word: string) => {
+//     const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
+//     const isExcluded = excludeWords.includes(word.toLowerCase()); // 除外単語リストに含まれるか
+//     return isAlphabet && !isExcluded;
+//   };
+
+//   const [isLoading, setIsLoading] = useState(false);
+
+//   const handleWordClick = async (word: string, sentenceIndex: number) => {
+//     setIsLoading(true);
+//     const wordData = await onWordClick(word); // 単語データを取得
+//     setIsLoading(false);
+//     setSelectedWordInfo({ sentenceIndex, wordData }); // 選択された単語情報をセット
+//   };
+
+//   const splitIntoWords = (sentence: string): string[] => {
+//     return sentence.match(/\w+|[^\s\w]+/g) || [];
+//   };
+
+//   return (
+//     <div className="flex flex-wrap bg-slate-50 text-sm text-black">
+//       {displaySentences.map((sentence: string, sentenceIndex: number) => (
+//         <div key={sentenceIndex} className="flex flex-col m-1">
+//           <p key={sentenceIndex} className="flex flex-wrap">
+//             {splitIntoWords(sentence).map((word: string, wordIndex: number) => {
+//               const isClickable = isClickableWord(word);
+//               return (
+//                 <span
+//                   key={wordIndex}
+//                   className={clsx("m-1", {
+//                     "bg-gray-200 cursor-pointer": isClickable,
+//                   })}
+//                   onClick={() =>
+//                     isClickable && handleWordClick(word, sentenceIndex)
+//                   }
+//                 >
+//                   {word}
+//                 </span>
+//               );
+//             })}
+//           </p>
+//           {selectedWordInfo.sentenceIndex !== null &&
+//           selectedWordInfo.sentenceIndex === sentenceIndex ? (
+//             <MeaningArea
+//               wordData={wordData}
+//               isLoading={
+//                 isLoading
+//               }
+//             />
+//           ) : null}
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
 
 interface WordData {
   baseWord: string;
@@ -304,35 +393,49 @@ interface WordData {
   synonyms: any;
 }
 
-function MeaningArea({ wordData }: { wordData: WordData }) {
+function MeaningArea({
+  wordData,
+  isLoading,
+}: {
+  wordData: WordData | null;
+  isLoading: boolean;
+}) {
   return (
     <div className="bg-black text-white p-4 m-2">
-      {wordData ? (
+      {isLoading ? (
         <>
-          <p>
-            <strong>Word:</strong> {wordData.baseWord}
-          </p>
-          <p>
-            <strong>Lemma:</strong> {wordData.lemma}
-          </p>
-          <p>
-            <strong>Meaning:</strong>{" "}
-            {wordData.meaning
-              ? wordData.meaning[0]?.meanings[0]?.definitions[0]?.definition
-              : "No definition found"}
-          </p>
-          <p>
-            <strong>Synonyms:</strong> {""}
-            {wordData.synonyms
-              ? wordData.synonyms
-                  .slice(0, 5)
-                  .map((synonym: { word: any }) => synonym.word)
-                  .join(", ")
-              : "No synonyms found"}
-          </p>
+          <p>Loading...</p>
         </>
       ) : (
-        <p>No word selected.</p>
+        <>
+          {wordData ? (
+            <>
+              <p>
+                <strong>Word:</strong> {wordData.baseWord}
+              </p>
+              <p>
+                <strong>Lemma:</strong> {wordData.lemma}
+              </p>
+              <p>
+                <strong>Meaning:</strong>{" "}
+                {wordData.meaning
+                  ? wordData.meaning[0]?.meanings[0]?.definitions[0]?.definition
+                  : "No definition found"}
+              </p>
+              <p>
+                <strong>Synonyms:</strong> {""}
+                {wordData.synonyms
+                  ? wordData.synonyms
+                      .slice(0, 5)
+                      .map((synonym: { word: any }) => synonym.word)
+                      .join(", ")
+                  : "No synonyms found"}
+              </p>
+            </>
+          ) : (
+            <p>No word selected.</p>
+          )}
+        </>
       )}
     </div>
   );
