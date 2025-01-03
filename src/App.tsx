@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import nlp from "compromise";
 import React from "react";
+import clsx from "clsx";
 
 export default function App() {
   return (
@@ -139,6 +140,7 @@ const EXCLUDED_WORDS = [
   "a",
   "an",
   "s",
+
   // 前置詞
   "in",
   "on",
@@ -214,42 +216,50 @@ interface DisplayAreaProps {
     meaning: any;
     synonyms: any;
   };
+  excludeWords?: string[];
 }
 
 function DisplayArea({
   displaySentences,
   onWordClick,
   wordData,
+  excludeWords = EXCLUDED_WORDS,
 }: DisplayAreaProps) {
-  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState<
-    number | null
-  >(null); // 選択された文のインデックス
-  const [selectedWordData, setSelectedWordData] = useState<any>(null); // 選択された単語データ
+  const [selectedWordInfo, setSelectedWordInfo] = useState<{
+    sentenceIndex: number | null;
+    wordData: any | null;
+  }>({
+    sentenceIndex: null,
+    wordData: null,
+  }); // 選択された単語情報
 
   const isClickableWord = (word: string) => {
     const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
-    const isExcluded = EXCLUDED_WORDS.includes(word.toLowerCase()); // 除外単語リストに含まれるか
+    const isExcluded = excludeWords.includes(word.toLowerCase()); // 除外単語リストに含まれるか
     return isAlphabet && !isExcluded;
   };
 
   const handleWordClick = async (word: string, sentenceIndex: number) => {
     const wordData = await onWordClick(word); // 単語データを取得
-    setSelectedSentenceIndex(sentenceIndex); // 対象の文を選択
-    setSelectedWordData(wordData); // 単語データをセット
+    setSelectedWordInfo({ sentenceIndex, wordData }); // 選択された単語情報をセット
+  };
+
+  const splitIntoWords = (sentence: string): string[] => {
+    return sentence.match(/\w+|[^\s\w]+/g) || [];
   };
 
   return (
     <div className="flex flex-wrap bg-slate-50 text-sm text-black">
       {displaySentences.map((sentence: string, sentenceIndex: number) => (
         <p key={sentenceIndex} className="flex flex-wrap">
-          {sentence.match(/\w+|[^\s\w]+/g)?.map((word, wordIndex) => {
+          {splitIntoWords(sentence).map((word: string, wordIndex: number) => {
             const isClickable = isClickableWord(word);
             return (
               <span
                 key={wordIndex}
-                className={`m-1 ${
-                  isClickable ? "bg-gray-200 cursor-pointer" : ""
-                }`}
+                className={clsx("m-1", {
+                  "bg-gray-200 cursor-pointer": isClickable,
+                })}
                 onClick={() =>
                   isClickable && handleWordClick(word, sentenceIndex)
                 }
@@ -258,8 +268,8 @@ function DisplayArea({
               </span>
             );
           })}
-          {selectedSentenceIndex !== null &&
-          selectedSentenceIndex === sentenceIndex ? (
+          {selectedWordInfo.sentenceIndex !== null &&
+          selectedWordInfo.sentenceIndex === sentenceIndex ? (
             <MeaningArea wordData={wordData} />
           ) : null}
         </p>
