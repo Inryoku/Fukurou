@@ -270,7 +270,6 @@ function DisplayArea({
     // ローディング終了し、データをセット
     setSelectedWordInfo({
       sentenceIndex,
-      wordData,
       isLoading: false,
     });
   };
@@ -315,76 +314,6 @@ function DisplayArea({
     </div>
   );
 }
-
-// function DisplayArea({
-//   displaySentences,
-//   onWordClick,
-//   wordData,
-//   excludeWords = EXCLUDED_WORDS,
-// }: DisplayAreaProps) {
-//   const [selectedWordInfo, setSelectedWordInfo] = useState<{
-//     sentenceIndex: number | null;
-//     wordData: any | null;
-//   }>({
-//     sentenceIndex: null,
-//     wordData: null,
-//   }); // 選択された単語情報
-
-//   const isClickableWord = (word: string) => {
-//     const isAlphabet = /^[a-zA-Z]+$/.test(word); // 単語がアルファベットのみか
-//     const isExcluded = excludeWords.includes(word.toLowerCase()); // 除外単語リストに含まれるか
-//     return isAlphabet && !isExcluded;
-//   };
-
-//   const [isLoading, setIsLoading] = useState(false);
-
-//   const handleWordClick = async (word: string, sentenceIndex: number) => {
-//     setIsLoading(true);
-//     const wordData = await onWordClick(word); // 単語データを取得
-//     setIsLoading(false);
-//     setSelectedWordInfo({ sentenceIndex, wordData }); // 選択された単語情報をセット
-//   };
-
-//   const splitIntoWords = (sentence: string): string[] => {
-//     return sentence.match(/\w+|[^\s\w]+/g) || [];
-//   };
-
-//   return (
-//     <div className="flex flex-wrap bg-slate-50 text-sm text-black">
-//       {displaySentences.map((sentence: string, sentenceIndex: number) => (
-//         <div key={sentenceIndex} className="flex flex-col m-1">
-//           <p key={sentenceIndex} className="flex flex-wrap">
-//             {splitIntoWords(sentence).map((word: string, wordIndex: number) => {
-//               const isClickable = isClickableWord(word);
-//               return (
-//                 <span
-//                   key={wordIndex}
-//                   className={clsx("m-1", {
-//                     "bg-gray-200 cursor-pointer": isClickable,
-//                   })}
-//                   onClick={() =>
-//                     isClickable && handleWordClick(word, sentenceIndex)
-//                   }
-//                 >
-//                   {word}
-//                 </span>
-//               );
-//             })}
-//           </p>
-//           {selectedWordInfo.sentenceIndex !== null &&
-//           selectedWordInfo.sentenceIndex === sentenceIndex ? (
-//             <MeaningArea
-//               wordData={wordData}
-//               isLoading={
-//                 isLoading
-//               }
-//             />
-//           ) : null}
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
 
 interface WordData {
   baseWord: string;
